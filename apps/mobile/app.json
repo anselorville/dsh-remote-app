@@ -12,14 +12,14 @@
       "bundleIdentifier": "com.anselorville.dshremote",
       "buildNumber": "1",
       "infoPlist": {
-        "CFBundleDisplayName": "DSH Remote",
         "NSCameraUsageDescription": "DSH Remote uses the camera to take photos you attach to a conversation.",
         "NSPhotoLibraryUsageDescription": "DSH Remote lets you pick photos to attach to a conversation or upload to a workspace.",
         "NSPhotoLibraryAddUsageDescription": "DSH Remote can save images from your workspace to your photo library.",
         "NSMicrophoneUsageDescription": "DSH Remote does not record audio; this is required by the WebRTC transport library.",
         "NSLocalNetworkUsageDescription": "DSH Remote connects directly to your DeepSeek Harness host on the local network when possible.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "appleTeamId": "ZUTYLST8UF"
     },
     "plugins": [
       "expo-file-system",
