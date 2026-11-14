@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, FlatList, Image, NativeModules, Pressable, ScrollView, StyleSheet, Text, ToastAndroid, View } from 'react-native'
+import { ActivityIndicator, FlatList, Image, NativeModules, Platform, Pressable, ScrollView, Share, StyleSheet, Text, ToastAndroid, View } from 'react-native'
 import * as DocumentPicker from 'expo-document-picker'
 import { Alert } from '../ui/alert'
 import * as FileSystem from 'expo-file-system/legacy'
-import { File as LocalFile, FileMode, Paths } from 'expo-file-system'
+import { Directory, File as LocalFile, FileMode, Paths } from 'expo-file-system'
 import { randomUUID } from 'expo-crypto'
 import { ChevronLeft, Download, File, Folder, RefreshCw, Upload } from 'lucide-react-native'
 import { requireConnectionRpc, requireSessionTools, useAppStore } from '../state/store'
@@ -25,11 +25,23 @@ import { spacing, type } from '../ui/theme'
 import { sessionToolsError } from './session-tools-error'
 import { PdfPreview } from './pdf-preview'
 
-const downloads = NativeModules.DshRemoteDownloads as {
+type DownloadsModule = {
   supported: boolean
   prepare(source: string, name: string): Promise<string>
   finish(uri: string, publish: boolean): Promise<void>
-} | undefined
+}
+
+// DshRemoteDownloads is an Android-only native module (MediaStore Downloads). On iOS it is
+// always stubbed out and downloads go through the system share sheet instead.
+const downloads: DownloadsModule | undefined = Platform.OS === 'android'
+  ? NativeModules.DshRemoteDownloads as DownloadsModule | undefined
+  : undefined
+
+/** Short, non-blocking confirmation: Android toast, iOS alert. */
+function notify(message: string) {
+  if (Platform.OS === 'android') ToastAndroid.show(message, ToastAndroid.SHORT)
+  else Alert.alert(message)
+}
 
 export function WorkspaceFilesPanel({ sessionId, initialFile, onClose }: { sessionId: string; initialFile?: string; onClose: () => void }) {
   const { colors } = useTheme()
@@ -100,7 +112,7 @@ export function WorkspaceFilesPanel({ sessionId, initialFile, onClose }: { sessi
       if (files.length === 0 || controller.signal.aborted) return
       const uploaded = await uploadStagedFilesToWorkspace(requireConnectionRpc(), sessionId, files, controller.signal)
       if (!controller.signal.aborted) {
-        ToastAndroid.show(t.tools.uploadedToWorkspace(uploaded.length), ToastAndroid.SHORT)
+        notify(t.tools.uploadedToWorkspace(uploaded.length))
         setRevision(v => v + 1)
       }
     } catch (e) {
@@ -125,10 +137,19 @@ export function WorkspaceFilesPanel({ sessionId, initialFile, onClose }: { sessi
     setDownloading(true)
     let uri: string | undefined
     let temporary: LocalFile | undefined
+    let shareDirectory: Directory | undefined
     try {
-      const directory = downloads?.supported ? undefined : await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync()
+      const ios = Platform.OS === 'ios'
+      const directory = downloads?.supported || ios ? undefined : await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync()
       if (controller.signal.aborted || (directory !== undefined && !directory.granted)) return
-      temporary = new LocalFile(Paths.cache, `workspace-download-${randomUUID()}`)
+      if (ios) {
+        // Keep the real file name so "Save to Files" in the share sheet uses it.
+        shareDirectory = new Directory(Paths.cache, `workspace-download-${randomUUID()}`)
+        shareDirectory.create()
+        temporary = new LocalFile(shareDirectory, file.split(/[\\/]/).pop() || 'download')
+      } else {
+        temporary = new LocalFile(Paths.cache, `workspace-download-${randomUUID()}`)
+      }
       temporary.create()
       const handle = temporary.open()
       try {
@@ -138,10 +159,14 @@ export function WorkspaceFilesPanel({ sessionId, initialFile, onClose }: { sessi
       }
       if (controller.signal.aborted) return
       const name = file.split(/[\\/]/).pop() || 'download'
+      if (ios) {
+        await Share.share({ url: temporary.uri })
+        return
+      }
       if (downloads?.supported) {
         const pending = await downloads.prepare(temporary.uri, name)
         await downloads.finish(pending, !controller.signal.aborted)
-        if (!controller.signal.aborted) ToastAndroid.show(t.tools.savedToDownloads, ToastAndroid.SHORT)
+        if (!controller.signal.aborted) notify(t.tools.savedToDownloads)
         return
       }
       if (directory === undefined || !directory.granted) return
@@ -168,12 +193,13 @@ export function WorkspaceFilesPanel({ sessionId, initialFile, onClose }: { sessi
       }
       if (controller.signal.aborted) return
       uri = undefined
-      if (!controller.signal.aborted) ToastAndroid.show(t.tools.downloaded, ToastAndroid.SHORT)
+      if (!controller.signal.aborted) notify(t.tools.downloaded)
     } catch (e) {
       if (!controller.signal.aborted) Alert.alert(t.tools.download, typeof e === 'object' && e !== null && 'code' in e && e.code === 'workspace-preview/too-large' ? t.tools.downloadTooLarge : sessionToolsError(e))
     } finally {
       try {
         if (temporary?.exists) temporary.delete()
+        if (shareDirectory?.exists) shareDirectory.delete()
       } catch (e) {
         if (!controller.signal.aborted) Alert.alert(t.tools.download, sessionToolsError(e))
       }
