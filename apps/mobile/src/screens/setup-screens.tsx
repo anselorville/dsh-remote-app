@@ -37,8 +37,8 @@ import { SheetModal } from '../ui/sheet'
 import { strings as zhCN, type LanguagePreference } from '../locales/i18n'
 import type { ActivityDockMode, DrawerLayoutMode, ThemePreference, TypographyDensity } from '../ui/theme'
 
-/** Default DSH Remote Server; a build can override it via EXPO_PUBLIC_DSH_REMOTE_SERVER. */
-const defaultServerUrl = 'https://dsh.r2049.cn'
+/** Default DSH Remote Server (self-hosted relay for this fork); a build can override it via EXPO_PUBLIC_DSH_REMOTE_SERVER. */
+const defaultServerUrl = 'https://dsh.zehoon.com'
 const updateUrl = 'https://github.com/liguobao/ds-harness-remote/releases/latest'
 const releaseApiUrl = 'https://api.github.com/repos/liguobao/ds-harness-remote/releases/latest'
 const developerUrl = 'https://www.zhihu.com/people/codelover'

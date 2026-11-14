@@ -1,4 +1,4 @@
-# DSH Remote for Android
+# DSH Remote mobile app (iOS build in this fork)
 
 React Native / Expo SDK 57 client for controlling a trusted DeepSeek Harness host over the
 [Remote Protocol v1](../../docs/protocol.md) Typert Remote tunnel, including the optional
@@ -8,8 +8,8 @@ Harness `0.1.1-rc.2` ApiProxy-only Hosts are no longer supported; capability dis
 
 ## Implemented flow
 
-- Configure and health-check a Remote server (defaults to the official
-  `https://dsh.r2049.cn`; override at build time with `EXPO_PUBLIC_DSH_REMOTE_SERVER`); sign in
+- Configure and health-check a Remote server (defaults to this fork's relay
+  `https://dsh.zehoon.com`; override at build time with `EXPO_PUBLIC_DSH_REMOTE_SERVER`); sign in
   with the Server account once to register the Android device and rotate its access/refresh
   tokens in SecureStore.
 - Open “Switch server” from the sign-in page’s three-dot menu to edit the server

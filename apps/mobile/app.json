@@ -9,30 +9,19 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "io.github.liguobao.dshremote",
-      "buildNumber": "72"
-    },
-    "android": {
-      "package": "io.github.liguobao.dshremote",
-      "versionCode": 72,
-      "softwareKeyboardLayoutMode": "resize",
-      "permissions": [
-        "android.permission.REQUEST_INSTALL_PACKAGES",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET"
-      ],
-      "blockedPermissions": [
-        "android.permission.SYSTEM_ALERT_WINDOW"
-      ],
-      "adaptiveIcon": {
-        "backgroundColor": "#111C32",
-        "foregroundImage": "./assets/android-icon-foreground-adaptive.png"
-      },
-      "predictiveBackGestureEnabled": false
+      "bundleIdentifier": "com.anselorville.dshremote",
+      "buildNumber": "1",
+      "infoPlist": {
+        "CFBundleDisplayName": "DSH Remote",
+        "NSCameraUsageDescription": "DSH Remote uses the camera to take photos you attach to a conversation.",
+        "NSPhotoLibraryUsageDescription": "DSH Remote lets you pick photos to attach to a conversation or upload to a workspace.",
+        "NSPhotoLibraryAddUsageDescription": "DSH Remote can save images from your workspace to your photo library.",
+        "NSMicrophoneUsageDescription": "DSH Remote does not record audio; this is required by the WebRTC transport library.",
+        "NSLocalNetworkUsageDescription": "DSH Remote connects directly to your DeepSeek Harness host on the local network when possible.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "plugins": [
-      "./plugins/with-remote-foreground-service",
       "expo-file-system",
       [
         "expo-splash-screen",
@@ -43,39 +32,35 @@
           "backgroundColor": "#F8F8F8"
         }
       ],
-      [
-        "expo-secure-store",
-        {
-          "configureAndroidBackup": true
-        }
-      ],
-      [
-        "expo-build-properties",
-        {
-          "android": {
-            "minSdkVersion": 26,
-            "usesCleartextTraffic": true
-          }
-        }
-      ],
+      "expo-secure-store",
+      "expo-build-properties",
       [
         "expo-localization",
         {
           "supportedLocales": {
-            "android": [
-              "en-US",
-              "zh-CN",
-              "ja-JP",
-              "zh-TW",
-              "es-ES",
-              "de-DE",
-              "fr-FR",
-              "ru-RU",
-              "uk-UA"
+            "ios": [
+              "en",
+              "zh-Hans",
+              "ja",
+              "zh-Hant",
+              "es",
+              "de",
+              "fr"
             ]
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DSH Remote lets you pick photos to attach to a conversation or upload to a workspace.",
+          "cameraPermission": "DSH Remote uses the camera to take photos you attach to a conversation.",
+          "microphonePermission": false
+        }
       ]
+    ],
+    "platforms": [
+      "ios"
     ]
   }
 }
