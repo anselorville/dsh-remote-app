@@ -39,6 +39,52 @@ function notifySheetOpening(openerId: string) {
   }
 }
 
+// Number of SheetModals whose native Modal is currently mounted (open, opening or closing).
+let mountedSheetCount = 0
+let lastSheetUnmountAt = 0
+const sheetsIdleWaiters = new Set<() => void>()
+function setSheetMounted(delta: 1 | -1) {
+  mountedSheetCount = Math.max(0, mountedSheetCount + delta)
+  if (delta < 0) lastSheetUnmountAt = Date.now()
+  if (mountedSheetCount > 0) return
+  const waiters = [...sheetsIdleWaiters]
+  sheetsIdleWaiters.clear()
+  for (const resolve of waiters) resolve()
+}
+
+/** Delay after the last sheet Modal unmounts so UIKit finishes dismissing its view controller. */
+export const IOS_MODAL_DISMISS_SETTLE_MS = 350
+
+/**
+ * Resolve once no SheetModal is on screen, so a native view controller (image / document
+ * picker, camera) can be presented safely.
+ *
+ * On iOS a closing sheet keeps its transparent RN `Modal` presented while its exit animation
+ * runs. expo-image-picker / expo-document-picker present on the top-most view controller,
+ * i.e. on that Modal, and UIKit then tears the picker down together with the Modal when the
+ * sheet finishes closing, so the picker never returns a result. Android pickers run in their
+ * own Activity and are unaffected, so this resolves immediately there.
+ */
+export function waitForSheetsDismissed(): Promise<void> {
+  if (Platform.OS !== 'ios') return Promise.resolve()
+  // Skip any closing sheet's exit animation instead of waiting for it.
+  dismissClosingSheets()
+  const settle = () => {
+    const remaining = lastSheetUnmountAt + IOS_MODAL_DISMISS_SETTLE_MS - Date.now()
+    return remaining > 0 ? new Promise<void>(resolve => setTimeout(resolve, remaining)) : Promise.resolve()
+  }
+  if (mountedSheetCount === 0) return settle()
+  return new Promise<void>(resolve => {
+    const timeout = setTimeout(done, 2000)
+    function done() {
+      clearTimeout(timeout)
+      sheetsIdleWaiters.delete(done)
+      resolve()
+    }
+    sheetsIdleWaiters.add(done)
+  }).then(settle)
+}
+
 /** Finish any in-flight or synchronous sheet exit immediately before switching to a new route. */
 export function dismissClosingSheets() {
   routeDismissEpoch += 1
@@ -146,6 +192,13 @@ export function SheetModal({
   }, [phase, progress, reduceMotion])
 
   useEffect(() => () => animationRef.current?.stop(), [])
+
+  const mounted = phase !== 'unmounted'
+  useEffect(() => {
+    if (!mounted) return
+    setSheetMounted(1)
+    return () => setSheetMounted(-1)
+  }, [mounted])
 
   if (phase === 'unmounted') return null
 

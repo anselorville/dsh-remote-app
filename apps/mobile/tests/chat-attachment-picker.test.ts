@@ -1,13 +1,14 @@
 import { beforeEach, expect, it, vi } from 'vitest'
 import type { RemoteSession } from '../src/types'
 
-const mocks = vi.hoisted(() => ({ library: vi.fn(), camera: vi.fn(), permission: vi.fn(), document: vi.fn(), alert: vi.fn() }))
+const mocks = vi.hoisted(() => ({ library: vi.fn(), camera: vi.fn(), permission: vi.fn(), document: vi.fn(), alert: vi.fn(), waitSheets: vi.fn(async () => {}) }))
 vi.mock('react', () => ({ useState: (value: unknown) => [value, vi.fn()] }))
 vi.mock('react-native', () => ({ Image: {} }))
 vi.mock('expo-image-picker', () => ({ launchImageLibraryAsync: mocks.library, launchCameraAsync: mocks.camera, requestCameraPermissionsAsync: mocks.permission }))
 vi.mock('expo-document-picker', () => ({ getDocumentAsync: mocks.document }))
 vi.mock('expo-file-system', () => ({ File: class { size = 1024 } }))
 vi.mock('../src/ui/alert', () => ({ Alert: { alert: mocks.alert } }))
+vi.mock('../src/ui/sheet', () => ({ waitForSheetsDismissed: mocks.waitSheets }))
 vi.mock('../src/services/browse-memory', () => ({ useBrowseMemory: { getState: () => ({ entries: {} }) } }))
 vi.mock('../src/state/store', () => ({ useAppStore: { getState: () => ({
   selectedSession: { sessionId: 's1' }, connection: { stats: { mode: 'relay' } },
@@ -85,4 +86,21 @@ it('does not open the camera when permission is refused', async () => {
   expect(mocks.camera).not.toHaveBeenCalled()
   expect(result.files).toEqual([])
   expect(mocks.alert).toHaveBeenCalledTimes(1)
+})
+
+it('waits for the closing + menu sheet before presenting any picker (iOS Modal presentation)', async () => {
+  mocks.library.mockResolvedValue({ canceled: true })
+  mocks.document.mockResolvedValue({ canceled: true })
+  mocks.permission.mockResolvedValue({ granted: true })
+  mocks.camera.mockResolvedValue({ canceled: true })
+  const result = picker()
+  await result.pickImages()
+  await result.pickFiles()
+  await result.takePhoto()
+  expect(mocks.waitSheets).toHaveBeenCalledTimes(3)
+  const waits = mocks.waitSheets.mock.invocationCallOrder
+  expect(waits[0]).toBeLessThan(mocks.library.mock.invocationCallOrder[0]!)
+  expect(waits[1]).toBeLessThan(mocks.document.mock.invocationCallOrder[0]!)
+  expect(waits[2]).toBeLessThan(mocks.permission.mock.invocationCallOrder[0]!)
+  expect(waits[2]).toBeLessThan(mocks.camera.mock.invocationCallOrder[0]!)
 })

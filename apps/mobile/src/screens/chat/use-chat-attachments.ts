@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { useState, type MutableRefObject } from 'react'
 import { Image } from 'react-native'
 import { Alert } from '../../ui/alert'
+import { waitForSheetsDismissed } from '../../ui/sheet'
 import { strings } from '../../locales/i18n'
 import { useBrowseMemory } from '../../services/browse-memory'
 import { useAppStore } from '../../state/store'
@@ -77,6 +78,8 @@ export function useChatAttachments({ session, memoryKey, images, setImages, stag
     const capturedGen = sessionGenerationRef.current
     setPickingImages(true)
     try {
+      // The `+` menu sheet is still closing; presenting a picker on its Modal fails on iOS.
+      await waitForSheetsDismissed()
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync()
         if (!permission.granted) {
@@ -193,6 +196,7 @@ export function useChatAttachments({ session, memoryKey, images, setImages, stag
     const capturedGen = sessionGenerationRef.current
     setPickingFiles(true)
     try {
+      await waitForSheetsDismissed()
       const result = await DocumentPicker.getDocumentAsync({
         type: '*/*',
         multiple: true,
