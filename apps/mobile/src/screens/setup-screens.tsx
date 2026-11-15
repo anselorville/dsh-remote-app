@@ -4,8 +4,6 @@ import { exportConnectionLog } from '../services/export-connection-log'
 import { useBrowseMemory, browsePreference } from '../services/browse-memory'
 import * as Application from 'expo-application'
 import * as Clipboard from 'expo-clipboard'
-import { File, Paths } from 'expo-file-system'
-import { getContentUriAsync } from 'expo-file-system/legacy'
 import * as IntentLauncher from 'expo-intent-launcher'
 import { ActivityIndicator, Animated, Easing, Image, KeyboardAvoidingView, Linking, Modal, PixelRatio, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { Alert } from '../ui/alert'
@@ -13,10 +11,8 @@ import { Toggle } from '../ui/toggle'
 import { AlertTriangle, BatteryCharging, Bell, BellRing, Bot, Cable, Check, ChevronRight, Clock, Copy, Download, ExternalLink, Fingerprint, FolderPen, Globe, Hash, History, Info, KeyRound, Languages, Laptop, Layers, ListCollapse, LockKeyhole, LogOut, Mail, MoreVertical, Network, Palette, PanelLeft, PanelTop, Puzzle, QrCode as QrCodeIcon, RotateCcw, Route, Server, Settings, ShieldAlert, ShieldCheck, SlidersHorizontal, Smartphone, Terminal, Type, UserRound, X, type LucideIcon } from 'lucide-react-native'
 import { ChatAppearanceScreen } from './chat-appearance-screen'
 import { useAppStore } from '../state/store'
-import { useBotTeamStore } from '../state/bot-store'
-import { DsBotSettingsModal } from './bot/ds-bot-settings-screen'
 import type { QrLoginStart } from '../state/store-state'
-import { SOURCE_CODE_URL } from '../lib/links'
+import { SOURCE_CODE_URL, TWITTER_URL } from '../lib/links'
 import { foregroundService } from '../services/foreground-service'
 import type { OAuthProviderInfo } from '../services/api'
 import { BlurHeaderFrame, Button, Field, GroupCard, GroupRow, IconButton, KeyValue, Screen, SectionTitle, TopBar } from '../ui/components'
@@ -39,10 +35,6 @@ import type { ActivityDockMode, DrawerLayoutMode, ThemePreference, TypographyDen
 
 /** Default DSH Remote Server (self-hosted relay for this fork); a build can override it via EXPO_PUBLIC_DSH_REMOTE_SERVER. */
 const defaultServerUrl = 'https://dsh.zehoon.com'
-const updateUrl = 'https://github.com/liguobao/ds-harness-remote/releases/latest'
-const releaseApiUrl = 'https://api.github.com/repos/liguobao/ds-harness-remote/releases/latest'
-const developerUrl = 'https://www.zhihu.com/people/codelover'
-const twitterUrl = 'https://x.com/liguobao2077'
 
 type SetupLoginMethod = LoginMethod
 
@@ -480,7 +472,7 @@ export function ServerSetupScreen({ onComplete, onBack, onMore, serverExpanded, 
             >
               <Path d={FISH_LOGO_PATH} fill={colors.ink} />
             </Svg>
-            <View style={styles.wordmarkRow} accessible accessibilityRole="header" accessibilityLabel="DS Harness Remote">
+            <View style={styles.wordmarkRow} accessible accessibilityRole="header" accessibilityLabel="DSH Remote">
               <Text style={styles.wordmark}>DSH REMOTE</Text>
             </View>
             <Text style={styles.heroLead}>{zhCN.setup.lead}</Text>
@@ -568,11 +560,11 @@ export function ServerSetupScreen({ onComplete, onBack, onMore, serverExpanded, 
 
 
           <View style={styles.loginFooter}>
-            <Pressable accessibilityRole="link" accessibilityLabel="GitHub/liguobao"
-              onPress={() => void Linking.openURL('https://github.com/liguobao').catch(() => {
+            <Pressable accessibilityRole="link" accessibilityLabel="GitHub/anselorville"
+              onPress={() => void Linking.openURL(SOURCE_CODE_URL).catch(() => {
                 Alert.alert(zhCN.settings.linkFailedTitle, zhCN.settings.linkFailedBody)
               })} style={styles.loginCreditLink}>
-              <Text style={styles.loginCredit}>Power by <Text style={styles.loginCreditName}>GitHub/liguobao</Text></Text>
+              <Text style={styles.loginCredit}>GitHub/<Text style={styles.loginCreditName}>anselorville</Text></Text>
             </Pressable>
           </View>
         </Screen>
@@ -637,10 +629,6 @@ export function SettingsScreen({
   const setThemePreference = useAppStore(state => state.setThemePreference)
   const typographyDensity = useAppStore(state => state.typographyDensity)
   const setTypographyDensity = useAppStore(state => state.setTypographyDensity)
-  const { phase: updatePhase, progress: updateProgress, latestVersion, checkForUpdates } = useUpdateCheck()
-  const appVersion = Application.nativeApplicationVersion ?? zhCN.common.unavailable
-  const buildVersion = Application.nativeBuildVersion
-  const versionLabel = buildVersion === null ? appVersion : `${appVersion} (${buildVersion})`
   const showIdentity = (label: string, value?: string) => {
     if (!value) return
     Alert.alert(label, value, [
@@ -691,9 +679,6 @@ export function SettingsScreen({
   const defaultPermission = useAppStore(state => state.defaultPermissionPreset)
   const setDefaultPermission = useAppStore(state => state.setDefaultPermissionPreset)
   const [permissionSaving, setPermissionSaving] = useState(false)
-  const [dsBotSettingsOpen, setDsBotSettingsOpen] = useState(false)
-  const botTeamState = useBotTeamStore(state => state.state)
-  const mainBotName = botTeamState?.bots.find(b => b.main)?.name ?? botTeamState?.bots[0]?.name ?? 'Chief'
   const reset = useAppStore(state => state.resetLocalData)
   const signOut = useAppStore(state => state.signOut)
   const { colors } = useTheme()
@@ -952,12 +937,8 @@ export function SettingsScreen({
                 first
                 icon={Bot}
                 label={zhCN.bots.dsBotSettings}
-                detail={
-                  botTeamState
-                    ? zhCN.bots.dsBotSettingsSummary(mainBotName, botTeamState.bots.length)
-                    : zhCN.bots.dsBotSettingsDisconnected
-                }
-                onPress={() => setDsBotSettingsOpen(true)}
+                detail={zhCN.bots.comingSoon}
+                chevron={false}
               />
             </GroupCard>
 
@@ -1047,26 +1028,6 @@ export function SettingsScreen({
             <GroupCard>
               <GroupRow
                 first
-                icon={Download}
-                label={zhCN.settings.checkUpdates}
-                detail={
-                  updatePhase === 'checking'
-                    ? zhCN.settings.checkingUpdates
-                    : updatePhase === 'downloading'
-                      ? updateProgress === null
-                        ? zhCN.settings.downloadingUpdate
-                        : `${zhCN.settings.downloadingUpdate} ${updateProgress}%`
-                      : latestVersion !== null
-                        ? `${zhCN.settings.updateFoundTitle} v${latestVersion}`
-                        : undefined
-                }
-                value={versionLabel}
-                disabled={updatePhase !== 'idle'}
-                chevron={updatePhase === 'idle'}
-                accessory={updatePhase !== 'idle' ? <ActivityIndicator size="small" color={colors.primary} /> : undefined}
-                onPress={() => void checkForUpdates()}
-              />
-              <GroupRow
                 icon={Info}
                 label={zhCN.settings.about}
                 detail={zhCN.settings.aboutLead}
@@ -1116,7 +1077,6 @@ export function SettingsScreen({
               </GroupCard>
             </ScrollView>
       </SheetModal>
-      <DsBotSettingsModal visible={dsBotSettingsOpen} onClose={() => setDsBotSettingsOpen(false)} />
       <SheetModal
         visible={densityPickerOpen}
         onClose={() => setDensityPickerOpen(false)}
@@ -1292,7 +1252,6 @@ export function HomeActionsMenu({ visible, onClose, onSettings, onAbout, onDevic
   const insets = useSafeAreaInsets()
   const { colors } = useTheme()
   const styles = useThemedStyles(createStyles)
-  const { phase, progress, checkForUpdates } = useUpdateCheck()
   const { height: windowHeight, landscape, compactHeight } = useResponsiveLayout()
   const reduceMotion = useReduceMotion()
   // The menu is anchored under the toolbar chip; growing from that corner
@@ -1365,132 +1324,11 @@ export function HomeActionsMenu({ visible, onClose, onSettings, onAbout, onDevic
           )}
           {onSwitchServer !== undefined && <HomeMenuRow icon={RotateCcw} label={zhCN.setup.switchServer} onPress={onSwitchServer} />}
           <HomeMenuRow icon={Settings} label={zhCN.settings.title} onPress={onSettings} />
-          <HomeMenuRow icon={Info} label={zhCN.settings.about} onPress={onAbout} />
-          <HomeMenuRow
-            icon={Download}
-            label={zhCN.settings.checkUpdates}
-            subtitle={phase === 'checking'
-              ? zhCN.settings.checkingUpdates
-              : phase === 'downloading'
-                ? progress === null ? zhCN.settings.downloadingUpdate : `${zhCN.settings.downloadingUpdate} ${progress}%`
-                : undefined}
-            onPress={() => void checkForUpdates()}
-            disabled={phase !== 'idle'}
-            busy={phase !== 'idle'}
-            last
-          />
+          <HomeMenuRow icon={Info} label={zhCN.settings.about} onPress={onAbout} last />
         </ScrollView>
       </Animated.View>
     </View>
   )
-}
-
-let cachedLatestVersion: string | null = null
-let startupUpdateChecked = false
-
-export function useStartupUpdateCheck(enabled = true) {
-  const { checkForUpdates } = useUpdateCheck()
-  useEffect(() => {
-    if (!enabled || startupUpdateChecked) return
-    startupUpdateChecked = true
-    void checkForUpdates({ silent: true })
-  }, [enabled])
-}
-
-function useUpdateCheck() {
-  const [phase, setPhase] = useState<'idle' | 'checking' | 'downloading'>('idle')
-  const [progress, setProgress] = useState<number | null>(null)
-  const [latestVersion, setLatestVersion] = useState<string | null>(() => cachedLatestVersion)
-  const appVersion = Application.nativeApplicationVersion ?? ''
-
-  const checkForUpdates = async (options?: { silent?: boolean }) => {
-    if (phase !== 'idle') return
-    const silent = options?.silent === true
-    if (!silent) setPhase('checking')
-    try {
-      const response = await fetch(releaseApiUrl)
-      if (!response.ok) throw new Error(`HTTP ${response.status}`)
-      const release = await response.json() as {
-        tag_name?: unknown
-        assets?: Array<{ name?: unknown; browser_download_url?: unknown }>
-      }
-      const latest = String(release.tag_name ?? '').replace(/^v/i, '')
-      const apkAsset = Array.isArray(release.assets)
-        ? release.assets.find(asset => typeof asset.name === 'string' && asset.name.toLowerCase().endsWith('.apk'))
-        : undefined
-      const downloadUrl = typeof apkAsset?.browser_download_url === 'string' ? apkAsset.browser_download_url : undefined
-      if (!silent) setPhase('idle')
-      if (latest !== '' && isNewerVersion(latest, appVersion)) {
-        cachedLatestVersion = latest
-        setLatestVersion(latest)
-        Alert.alert(
-          zhCN.settings.updateFoundTitle,
-          zhCN.settings.updateFoundBody(latest, appVersion),
-          [
-            { text: zhCN.common.cancel, style: 'cancel' },
-            downloadUrl !== undefined
-              ? { text: zhCN.settings.downloadUpdate, onPress: () => void downloadAndInstall(downloadUrl) }
-              : { text: zhCN.settings.openUpdates, onPress: () => void Linking.openURL(updateUrl) },
-          ],
-        )
-      } else {
-        cachedLatestVersion = null
-        setLatestVersion(null)
-        if (!silent) Alert.alert(zhCN.settings.upToDateTitle, zhCN.settings.upToDateBody)
-      }
-    } catch {
-      if (!silent) {
-        setPhase('idle')
-        Alert.alert(zhCN.settings.checkFailedTitle, zhCN.settings.checkFailedBody)
-      }
-    }
-  }
-
-  const downloadAndInstall = async (url: string) => {
-    setPhase('downloading')
-    setProgress(null)
-    try {
-      const destination = new File(Paths.cache, 'dsh-remote-latest.apk')
-      const file = await File.downloadFileAsync(url, destination, {
-        idempotent: true,
-        onProgress: ({ bytesWritten, totalBytes }) => {
-          if (totalBytes > 0) setProgress(Math.round((bytesWritten / totalBytes) * 100))
-        },
-      })
-      try {
-        const contentUri = await getContentUriAsync(file.uri)
-        await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
-          data: contentUri,
-          type: 'application/vnd.android.package-archive',
-          flags: 1 | 2, // FLAG_ACTIVITY_NEW_TASK | FLAG_GRANT_READ_URI_PERMISSION
-        })
-      } catch {
-        const applicationId = Application.applicationId
-        Alert.alert(
-          zhCN.settings.installFailedTitle,
-          zhCN.settings.installFailedBody,
-          applicationId === null
-            ? [{ text: zhCN.common.close }]
-            : [
-                { text: zhCN.common.cancel, style: 'cancel' },
-                {
-                  text: zhCN.settings.openInstallSettings,
-                  onPress: () => void IntentLauncher.startActivityAsync('android.settings.MANAGE_UNKNOWN_APP_SOURCES', {
-                    data: `package:${applicationId}`,
-                  }),
-                },
-              ],
-        )
-      }
-    } catch {
-      Alert.alert(zhCN.settings.downloadFailedTitle, zhCN.settings.downloadFailedBody)
-    } finally {
-      setPhase('idle')
-      setProgress(null)
-    }
-  }
-
-  return { phase, progress, latestVersion, checkForUpdates }
 }
 
 function HomeMenuRow({ icon: Icon, label, subtitle, onPress, disabled = false, busy = false, last = false }: {
@@ -1530,22 +1368,6 @@ function HomeMenuRow({ icon: Icon, label, subtitle, onPress, disabled = false, b
   )
 }
 
-function isNewerVersion(latest: string, current: string): boolean {
-  const parse = (value: string): number[] => value.split('.').map(Number)
-  const parseable = (parts: number[]) => parts.length > 0 && parts.every(part => Number.isFinite(part))
-  const a = parse(latest)
-  const b = parse(current)
-  if (!parseable(a)) return false
-  if (!parseable(b)) return true // installed version is unknown; assume an update is available
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const x = a[i] ?? 0
-    const y = b[i] ?? 0
-    if (x > y) return true
-    if (x < y) return false
-  }
-  return false
-}
-
 const TERMINAL_PALETTE = {
   surface: '#0D1117',
   header: '#161B22',
@@ -1579,7 +1401,7 @@ export function DiagnosticsScreen({ onBack }: { onBack: () => void }) {
   const { colors } = useTheme()
   const styles = useThemedStyles(createStyles)
   const { contentMaxWidth, landscape } = useResponsiveLayout()
-  const appVersion = Application.nativeApplicationVersion ?? '0.6.3'
+  const appVersion = Application.nativeApplicationVersion ?? '0.1.0'
 
   const [lines, setLines] = useState<readonly string[]>(() => connectionLogEntries())
   const [exportingLog, setExportingLog] = useState(false)
@@ -1750,21 +1572,10 @@ export function DiagnosticsScreen({ onBack }: { onBack: () => void }) {
 }
 
 export function AboutScreen({ onBack }: { onBack: () => void }) {
-  const { colors } = useTheme()
   const styles = useThemedStyles(createStyles)
-  const { phase, progress, latestVersion, checkForUpdates } = useUpdateCheck()
   const appVersion = Application.nativeApplicationVersion ?? zhCN.common.unavailable
   const buildVersion = Application.nativeBuildVersion
   const versionLabel = buildVersion === null ? appVersion : `${appVersion} (${buildVersion})`
-  const updateSubtitle = phase === 'checking'
-    ? zhCN.settings.checkingUpdates
-    : phase === 'downloading'
-      ? progress === null
-        ? zhCN.settings.downloadingUpdate
-        : `${zhCN.settings.downloadingUpdate} ${progress}%`
-      : latestVersion !== null
-        ? `${zhCN.settings.updateFoundTitle} v${latestVersion}`
-        : versionLabel
 
   return (
     <View style={styles.flex}>
@@ -1772,31 +1583,13 @@ export function AboutScreen({ onBack }: { onBack: () => void }) {
         <Screen>
           <View style={styles.aboutHero}>
             <Image source={require('../../assets/icon.png')} style={styles.aboutLogo} resizeMode="contain" />
-            <Text style={styles.aboutProductName}>DS Harness Remote</Text>
+            <Text style={styles.aboutProductName}>DSH Remote</Text>
             <Text style={styles.aboutVersion}>{versionLabel}</Text>
           </View>
 
           <View style={styles.group}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={zhCN.settings.checkUpdates}
-              accessibilityState={{ disabled: phase !== 'idle', busy: phase !== 'idle' }}
-              disabled={phase !== 'idle'}
-              onPress={() => void checkForUpdates()}
-              style={({ pressed }) => [styles.settingsLink, pressed && phase === 'idle' && styles.settingsLinkPressed]}
-            >
-              <View style={styles.settingsLinkCopy}>
-                <Text style={styles.settingsLinkLabel}>{zhCN.settings.checkUpdates}</Text>
-                <Text style={styles.settingsLinkUrl}>{updateSubtitle}</Text>
-              </View>
-              {phase !== 'idle'
-                ? <ActivityIndicator size="small" color={colors.primary} />
-                : <Download size={18} color={colors.primary} />}
-            </Pressable>
-            <SettingsLink label={zhCN.settings.developer} value={zhCN.settings.developerValue} url={developerUrl} />
-            <SettingsLink label={zhCN.settings.twitter} url={twitterUrl} />
-            <SettingsLink label={zhCN.settings.sourceCodeUrl} url={SOURCE_CODE_URL} />
-            <SettingsLink label={zhCN.settings.updateUrl} url={updateUrl} />
+            <SettingsLink label={zhCN.settings.sourceCodeUrl} value="anselorville/dsh-remote-app" url={SOURCE_CODE_URL} />
+            <SettingsLink label={zhCN.settings.twitter} value="@anse10rville" url={TWITTER_URL} />
           </View>
         </Screen>
       </BlurHeaderFrame>

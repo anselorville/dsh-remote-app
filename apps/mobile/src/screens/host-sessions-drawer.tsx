@@ -1118,7 +1118,7 @@ export function HostSessionsDrawer({
       <View style={styles.brandHeader}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`DS Harness Remote · ${strings.settings.about}`}
+          accessibilityLabel={`DSH Remote · ${strings.settings.about}`}
           disabled={onOpenAbout === undefined}
           onPress={() => {
             Keyboard.dismiss()
@@ -1135,7 +1135,7 @@ export function HostSessionsDrawer({
           >
             <Path d={FISH_LOGO_PATH} fill={colors.ink} />
           </Svg>
-          <Text style={styles.brandTitle} numberOfLines={1}>DS Harness Remote</Text>
+          <Text style={styles.brandTitle} numberOfLines={1}>DSH Remote</Text>
         </Pressable>
         <View style={styles.brandRight}>
           {onOpenSettings !== undefined && (
